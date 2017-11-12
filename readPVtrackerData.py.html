@@ -1,0 +1,114 @@
+
+# coding: utf-8
+
+# # Read PV tracker data
+# 
+# This script reads data from the PV tracker installed at SIRTA. 
+# The data gathered was from the SunWorld pannel in order to use it as a control to evaluate the effects that shadowing has on the SunPower pannel that is equiped with a bypass diode. In oder words, we want to verify that the bypass diode allows a higher Pmax and efficiency.
+# 
+# The experiments were held at SIRTA (48.7o N, 2.2o E) on November 2017. 
+# 
+# script date: 11/08/2017
+
+# In[22]:
+
+
+# Import lybraries
+
+import os
+import glob
+import datetime as dt
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import numpy as np
+import sys
+from itertools import chain
+
+import pandas as pd
+
+get_ipython().magic('matplotlib inline')
+
+# Style of figures
+plt.style.use('seaborn-poster')
+
+# Size of figures
+plt.rcParams['figure.figsize'] = 15, 10
+
+
+ONE_DAY = dt.timedelta(days=1)
+
+# Dir of data - define dir
+in_dir = '/Users/rebecadoctors/Documents/Polytechnique/P1 - 2017.2/MEC573 - Renewable sources of energy/Python/Data/Control data/'
+sys.path.append(in_dir)
+
+from readPVtracker import read_tracker 
+
+# function to list files 
+def find_files(date_1, date_2, mask, bdd_dir):
+
+    tmp_date = date_1
+    list_files = []
+    while tmp_date <= date_2:
+        
+        in_dir = bdd_dir.format(tmp_date)
+        tmp_file = mask.format(tmp_date)
+        tmp_file = os.path.join(in_dir, tmp_file)
+        
+        tmp_list = sorted(glob.glob(tmp_file))
+    
+        if len(tmp_list) != 0:
+            list_files.append(tmp_list)
+        
+        tmp_date += ONE_DAY
+    
+    return sorted([file_ for file_ in chain.from_iterable(list_files)])
+
+# select the period
+date_1 = dt.datetime(2017, 11, 7)
+date_2 = dt.datetime(2017, 11, 7)
+
+# select panel
+p='solarworld'
+p2='SolarWorld'
+
+
+#FIND FILES
+mask = 'Tracker1_0a_' +p2+'_v1_{:%Y%m%d}_*.txt'
+list1 = find_files(date_1, date_2, mask, in_dir)
+
+#print(list1)
+
+
+data=read_tracker(list1)
+
+
+# In[23]:
+
+
+data
+
+
+# In[30]:
+
+
+#PLOT time series
+
+# Define plot width in Jupyter
+get_ipython().magic('pylab inline')
+pylab.rcParams['figure.figsize'] = (7, 4)
+
+# PLot Pmax and Solar irradiance
+ax1 = data.Pmax.plot()
+ax2=data.Ec.plot(secondary_y=True, style='g')
+ax1.right_ax.set_ylabel('Solar irradiance $(W.m^{-2})$')
+ax1.set_ylabel('Pmax (W)')
+ax1.set_xlabel('Time (UTC)')
+ax1.set_ylim(0,250)
+ax2.set_ylim(0,800)
+ax1.grid('on')
+ax1.xaxis.grid(True, which='both')
+myFmt = mdates.DateFormatter('%H:%M')
+ax1.xaxis.set_major_formatter(myFmt)
+#ax1.set_xlim([dt.datetime(2017,11,7,13,31),dt.datetime(2017,11,7,15,54)])
+
+
