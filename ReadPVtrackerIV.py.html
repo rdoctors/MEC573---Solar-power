@@ -1,0 +1,159 @@
+
+# coding: utf-8
+
+# # Read IV data from control panel
+# 
+# This script reads IV data from the PV tracker installed at SIRTA. The data gathered was from the SunWorld pannel in order to use it as a control to evaluate the effects that shadowing has on the SunPower pannel that is equiped with a bypass diode. In other words, we want to verify that the bypass diode allows a higher Pmax and efficiency.
+# 
+# The experiments were held at SIRTA (48.7o N, 2.2o E) on November 2017.
+# 
+# script date: 11/14/2017
+# 
+
+# In[20]:
+
+
+
+get_ipython().magic('matplotlib inline')
+
+
+import datetime as dt
+
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import glob
+import sys
+from itertools import chain
+import matplotlib.dates as mdates
+
+ONE_DAY = dt.timedelta(days=1)
+
+# Def directory
+def_dir = '/Users/rebecadoctors/Documents/Polytechnique/P1 - 2017.2/MEC573 - Renewable sources of energy/Python/Data/Control data/IV/'
+sys.path.append(def_dir)
+
+
+# In[68]:
+
+
+DATE_FMT = '%Y%m%d_%H:%M:%S'
+#files = ['21/pv1_0a_z1Piv-SolarFrontier_v01_20170917_170021_60.txt']
+
+
+# function to list files 
+def find_files(date_1, date_2, mask, bdd_dir):
+
+    tmp_date = date_1
+    list_files = []
+    while tmp_date <= date_2:
+        
+        in_dir = bdd_dir.format(tmp_date)
+        tmp_file = mask.format(tmp_date)
+        tmp_file = os.path.join(in_dir, tmp_file)
+        
+        tmp_list = sorted(glob.glob(tmp_file))
+    
+        if len(tmp_list) != 0:
+            list_files.append(tmp_list)
+        
+        tmp_date += ONE_DAY
+    
+    return sorted([file_ for file_ in chain.from_iterable(list_files)])
+
+
+# select the period
+date_1 = dt.datetime(2017,11,7)
+date_2 = dt.datetime(2017,11,7)
+
+
+#panneau='FranceWatts'
+panneau='SolarWorld'
+
+# PV1 IV
+in_dir = def_dir
+mask = 'Tracker1_0a_' + panneau + '_IV_v1_{:%Y%m%d}_*.txt'
+list_files_IV = find_files(date_1, date_2, mask, in_dir)
+
+
+
+# In[72]:
+
+
+# Function to red IV files
+def read_IV_files(list_files):
+    """read several files into list of lists"""
+    
+    raw_data = []
+    for file_ in list_files:
+        
+        with open(file_, 'r') as f_id:
+            raw_lines = f_id.readlines()
+            raw_lines = [line.strip() for line in raw_lines]
+        
+        raw_data.append(raw_lines)
+        
+    return raw_data
+
+
+
+# Function to read IV data
+def read_IV_data(raw_lists):
+    """extract data from raw text"""
+    
+    dates = []
+    tensions = []
+    courants = []
+    for list_ in raw_lists:
+        
+        i_line = 0
+        print(len(list_))
+        while i_line < len(list_):
+            
+            
+            if list_[i_line][0]=='D':
+                i_line += 1  
+            try:
+                tmp_d = dt.datetime.strptime(list_[i_line], DATE_FMT)
+            except ValueError:
+                i_line += 1
+                continue
+            
+            # read tension
+            i_line += 1
+            #print(list_[i_line])
+            tmp_t = np.array(list_[i_line].split('\t')).astype('f4')
+            tmp_t = tmp_t.reshape(1, tmp_t.size)
+            
+            # rean courant
+            i_line += 1
+            tmp_c = np.array(list_[i_line].split('\t')).astype('f4')
+            tmp_c = tmp_c.reshape(1, tmp_c.size)
+            
+            # group data
+            dates.append(tmp_d)
+            tensions.append(tmp_t)
+            courants.append(tmp_c)
+    
+    # convert data to numpy array
+    dates = np.array(dates)
+    #print(tensions)
+    tensions = np.concatenate(tensions)
+    courants = np.concatenate(courants)
+    
+    return dates, tensions, courants  
+
+
+#read IV files 
+raw_data = read_IV_files(list_files_IV)
+date, tension, courant = read_IV_data(raw_data)
+
+x = read_IV_data(raw_data)
+
+# Plot data
+plt.plot(tension[3],courant[3])
+date[3]
+
+
+
